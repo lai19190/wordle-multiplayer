@@ -1,4 +1,4 @@
-import type { GuessState } from '../typings/type'
+import type { GuessState } from '../types'
 
 const Cell = ({ char, state: status }: { char: string; state: GuessState }) => {
   const baseProps = 'm-1 h-15 w-15 flex justify-center items-center text-2xl font-bold uppercase'

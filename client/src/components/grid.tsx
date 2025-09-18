@@ -1,4 +1,4 @@
-import type { Guess } from '../typings/type'
+import type { Guess } from '../types'
 import Row from './row'
 
 const Grid = ({
