@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import Grid from './components/grid'
 import Header from './components/header'
-import type { GameStatus } from './types'
+import type { GameStatus } from '../../shared/types'
 import GameEndFooter from './components/gameEndFooter'
 import { socket } from './socket'
+import OpponentGrid from './components/grid-opponent'
 
 const App = () => {
   // WebSocket connection to server
   const [isConnected, setIsConnected] = useState(socket.connected)
+  const playerId = socket.id ?? ''
   const [gameStatus, setGameStatus] = useState<GameStatus>(
     // default state before fetching from server
     {
-      gameState: 'playing',
-      guesses: [],
+      players: {
+        [playerId]: { guesses: [], status: 'playing' },
+      },
       maxGuesses: 6,
     }
   )
@@ -51,7 +54,10 @@ const App = () => {
   const [currentGuess, setCurrentGuess] = useState<string>('')
   // Listen to keyboard events
   const handleKeyPress = async (event: KeyboardEvent) => {
-    if (gameStatus.gameState !== 'playing') {
+    if (!isConnected) {
+      return
+    }
+    if (gameStatus.players[playerId]?.status !== 'playing') {
       return
     }
     if (event.key === 'Enter') {
@@ -74,9 +80,8 @@ const App = () => {
     }
   }, [currentGuess, gameStatus])
 
-  const guessesLeft = gameStatus.maxGuesses - gameStatus.guesses.length
-  const isGameWon = gameStatus.gameState === 'won'
-  const isGameLost = gameStatus.gameState === 'lost'
+  const isGameWon = gameStatus.players[playerId]?.status === 'won'
+  const isGameLost = gameStatus.players[playerId]?.status === 'lost'
   const isGameEnded = isGameWon || isGameLost
 
   const restartGame = async () => {
@@ -84,15 +89,32 @@ const App = () => {
     setCurrentGuess('')
   }
 
+  if (!isConnected) {
+    return <div>Connecting to server...</div>
+  }
+
   return (
     <>
-      <Header maxGuesses={gameStatus.maxGuesses} currentTurn={gameStatus.guesses.length} />
+      <Header />
       {!isGameEnded && (
-        <Grid
-          attemptedGuesses={gameStatus.guesses}
-          guessesLeft={guessesLeft}
-          currentGuess={currentGuess}
-        />
+        <div className="flex flex-row justify-center items-center">
+          <Grid
+            playerStatus={gameStatus.players[playerId]}
+            currentGuess={currentGuess}
+            maxGuesses={gameStatus.maxGuesses}
+          />
+          {Object.keys(gameStatus.players).map((id) => {
+            if (id === playerId) {
+              return undefined
+            }
+            return (
+              <OpponentGrid
+                playerStatus={gameStatus.players[id]}
+                maxGuesses={gameStatus.maxGuesses}
+              />
+            )
+          })}
+        </div>
       )}
       {isGameEnded && gameStatus.answer && (
         <GameEndFooter isGameWon={isGameWon} answer={gameStatus.answer} restartGame={restartGame} />

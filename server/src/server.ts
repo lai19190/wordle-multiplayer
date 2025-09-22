@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import { WordleController } from './wordle-controller';
+import { WordleMatchMakingController } from './wordle-match-making-controller';
 import { Server } from 'socket.io';
 import config from './config';
 
@@ -12,29 +12,43 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
-const wordleController = new WordleController();
+const controller = new WordleMatchMakingController();
 
 
 io.on('connection', (socket) => {
   console.log(`a user ${socket.id} connected`);
 
+  let roomId = controller.JoinGame(socket.id);
+  socket.join(roomId);
+  io.to(roomId).emit('gameStatus', controller.GetGameStatus(roomId, socket.id));
+
   socket.on('submitGuess', (guess: string) => {
     try {
-      wordleController.SubmitGuess(socket.id, guess);
-      socket.emit('gameStatus', wordleController.GetGameStatus(socket.id));
+      controller.SubmitGuess(roomId, socket.id, guess);
+      io.to(roomId).emit('gameStatus', controller.GetGameStatus(roomId, socket.id));
     } catch (error: any) {
       socket.emit('errorMessage', error.message);
     }
   });
 
   socket.on('restartGame', () => {
-    wordleController.StartNewGame(socket.id);
-    socket.emit('gameStatus', wordleController.GetGameStatus(socket.id));
+    controller.LeaveGame(roomId, socket.id);
+    socket.leave(roomId);
+
+    roomId = controller.JoinGame(socket.id);
+    socket.join(roomId);
+
+    io.to(roomId).emit('gameStatus', controller.GetGameStatus(roomId, socket.id));
   });
 
   socket.on('disconnect', () => {
     console.log(`user ${socket.id} disconnected`);
-    wordleController.CleanUp(socket.id);
+    const isRoomEmpty = controller.LeaveGame(roomId, socket.id);
+    socket.leave(roomId);
+
+    if (!isRoomEmpty) {
+      io.to(roomId).emit('gameStatus', controller.GetGameStatus(roomId, socket.id));
+    }
   });
 
 });

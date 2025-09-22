@@ -1,36 +1,45 @@
 import Config from "./config";
 import { VALID_WORD_LIST } from "./constants/valid_word";
-import { GameState, GameStatus, Guess, GuessState } from "./types";
+import { GameStatus, GuessState, PlayerStatus } from "../../shared/types";
 
 export class WordleGame {
   private answer: string;
-  private gameState: GameState;
-  private maxGuesses: number;
-  private guesses: Guess[];
+  private maxGuesses: number = Config.maxGuesses;
+  private players: Record<string, PlayerStatus>;
+  private isGameEnded: boolean = false;
 
   constructor() {
     this.answer = this.getRandomWord();
-    this.gameState = 'playing';
-    this.maxGuesses = Config.maxGuesses;
-    this.guesses = [];
+    this.players = {};
   }
 
-  public StartNewGame() {
-    this.answer = this.getRandomWord();
-    this.gameState = 'playing';
-    this.guesses = [];
+  public JoinGame(playerId: string) {
+    if (!this.players[playerId]) {
+      this.players[playerId] = { guesses: [], status: 'playing' };
+    }
   }
 
-  public GetGameStatus(): GameStatus {
+  public LeaveGame(playerId: string): boolean {
+    if (!this.players[playerId]) {
+      return false;
+    }
+    delete this.players[playerId];
+    return true;
+  }
+
+  public GetGameStatus(playerId: string): GameStatus {
     return {
-      guesses: this.guesses,
+      players: this.players,
       maxGuesses: this.maxGuesses,
-      gameState: this.gameState,
-      answer: this.gameState !== 'playing' ? this.answer : undefined
+      answer: this.players[playerId]?.status !== 'playing' ? this.answer : undefined
     };
   }
 
-  public SubmitGuess(guess: string) {
+  public GetIsGameEnded(): boolean {
+    return this.isGameEnded
+  }
+
+  public SubmitGuess(playerId: string, guess: string) {
     // input validation
     if (guess.length !== 5) {
       throw new Error('Not enough letters');
@@ -39,6 +48,7 @@ export class WordleGame {
       throw new Error('Not in word list');
     }
 
+    // evaluate guess
     const state: GuessState[] = []
     for (let i = 0; i < 5; i++) {
       if (guess[i] === this.answer[i]) {
@@ -49,11 +59,24 @@ export class WordleGame {
         state[i] = 'miss'
       }
     }
-    this.guesses.push({ guess: guess, state: state });
+
+    // update player status
+    if (!this.players[playerId]) {
+      this.players[playerId] = { guesses: [], status: 'playing' };
+    }
+    this.players[playerId].guesses.push({ guess: guess, state: state });
     if (guess === this.answer) {
-      this.gameState = 'won';
-    } else if (this.guesses.length >= this.maxGuesses) {
-      this.gameState = 'lost';
+      this.players[playerId].status = 'won';
+      // set all other players to lost
+      for (const id in this.players) {
+        if (id !== playerId) {
+          this.players[id].status = 'lost';
+        }
+      }
+      this.isGameEnded = true
+    } else if (this.players[playerId].guesses.length >= this.maxGuesses) {
+      this.players[playerId].status = 'lost';
+      this.isGameEnded = true
     }
   }
 

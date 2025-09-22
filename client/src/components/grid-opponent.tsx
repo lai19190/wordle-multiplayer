@@ -1,13 +1,11 @@
 import type { PlayerStatus } from '../../../shared/types'
 import Row from './row'
 
-const Grid = ({
+const OpponentGrid = ({
   playerStatus,
-  currentGuess,
   maxGuesses,
 }: {
   playerStatus: PlayerStatus
-  currentGuess: string
   maxGuesses: number
 }) => {
   const guessesLeft = maxGuesses - playerStatus.guesses.length
@@ -15,27 +13,19 @@ const Grid = ({
   const attemptedGuessRow = attemptedGuesses.map((g, i) => (
     <Row key={i} guess={g.guess} states={g.state} />
   ))
-  const currentRow =
-    guessesLeft > 0 ? (
-      <Row
-        guess={currentGuess}
-        states={Array.from({ length: 5 }, (_, i) => (i < currentGuess.length ? 'filled' : 'empty'))}
-      />
-    ) : null
-  const emptyRow = Array.from({ length: guessesLeft - 1 }).map((_, i) => (
+  const emptyRow = Array.from({ length: guessesLeft }).map((_, i) => (
     <Row key={i} guess="" states={Array.from({ length: 5 }, () => 'empty')} />
   ))
 
   return (
     <div className="flex flex-col justify-center items-center mx-5">
-      <h1 className="flex justify-center text-4xl font-bold text-green-700 my-1">
-        You - {attemptedGuesses.length} / {maxGuesses}
+      <h1 className="flex justify-center text-4xl font-bold text-red-700 my-1">
+        Opponent - {attemptedGuesses.length} / {maxGuesses}
       </h1>
       {attemptedGuessRow}
-      {currentRow}
       {emptyRow}
     </div>
   )
 }
 
-export default Grid
+export default OpponentGrid

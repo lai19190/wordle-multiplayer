@@ -1,4 +1,4 @@
-import type { GuessState } from '../types'
+import type { GuessState } from '../../../shared/types'
 import Cell from './cell'
 
 const Row = ({ guess, states }: { guess: string; states: GuessState[] }) => {
